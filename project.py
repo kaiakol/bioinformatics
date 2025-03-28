@@ -12,6 +12,10 @@ import re
 import requests  
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
+import http.server
+import socketserver
+import base64
+from io import BytesIO
 
 # Function to run MEME using Docker
 def run_meme(input_file, output_dir, motif_length, background_model):
@@ -48,7 +52,50 @@ def reshape_data(data):
     else:
         return np.array(data).reshape(-1, 1)
 
-# Function to post-process output using k-means clustering
+# Function to save plot and cluster information to an HTML file
+def save_results_to_html(pca_result, labels, motifs, jaspar_matches, output_html):
+    # Save the scatter plot as a base64-encoded image
+    plt.figure()
+    scatter = plt.scatter(pca_result[:, 0], pca_result[:, 1], c=labels, cmap="viridis")
+    plt.title("PCA of Motifs with K-means Clustering")
+    plt.xlabel("PCA1")
+    plt.ylabel("PCA2")
+    # Add a legend to show cluster numbers
+    legend1 = plt.legend(*scatter.legend_elements(), title="Clusters")
+    plt.gca().add_artist(legend1)
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png")
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
+    buffer.close()
+    plt.close()
+
+    # Read the HTML template
+    template_path = os.path.join(os.getcwd(), "results_template.html")
+    with open(template_path, "r") as template_file:
+        html_template = template_file.read()
+
+    # Generate the table rows for motifs and clusters
+    table_rows = "".join(f"<tr><td>{motif}</td><td>{label}</td></tr>" for motif, label in zip(motifs, labels))
+
+    # Generate the table rows for JASPAR matches
+    jaspar_rows = "".join(
+        f"<tr><td>{motif}</td><td>{match}</td><td>{score:.2f}</td></tr>"
+        for motif, match, score in jaspar_matches
+    )
+
+    # Replace placeholders in the template
+    html_content = (
+        html_template.replace("{{scatter_plot}}", image_base64)
+        .replace("{{table_rows}}", table_rows)
+        .replace("{{jaspar_rows}}", jaspar_rows)
+    )
+
+    # Write the final HTML content to the output file
+    with open(output_html, "w") as output_file:
+        output_file.write(html_content)
+
+# Modify postprocess_output to save results to HTML and serve it
 def postprocess_output(meme_output_dir, k_range):
     motif_file = os.path.join(meme_output_dir, "meme.txt")
     motifs = []
@@ -81,30 +128,33 @@ def postprocess_output(meme_output_dir, k_range):
     pca = PCA(n_components=2)
     pca_result = pca.fit_transform(motif_matrix)
     
-    # Perform k-means clustering
+    # Perform k-means clustering with penalty for too many clusters
     best_k = k_range[0]
-    best_inertia = float('inf')
+    best_score = float('inf')
     for k in range(k_range[0], min(k_range[1] + 1, len(motifs))):
-        kmeans = KMeans(n_clusters=k)
+        kmeans = KMeans(n_clusters=k, random_state=42)
         kmeans.fit(pca_result)
-        if kmeans.inertia_ < best_inertia:
-            best_inertia = kmeans.inertia_
+        score = kmeans.inertia_ + 10 * k  
+        if score < best_score:
+            best_score = score
             best_k = k
     
-    kmeans = KMeans(n_clusters=best_k)
+    kmeans = KMeans(n_clusters=best_k, random_state=42)
     kmeans.fit(pca_result)
     labels = kmeans.labels_
-    
-    # Print PCA results and cluster labels
-    for i, (x, y) in enumerate(pca_result):
-        print(f"Motif: {motifs[i]}, PCA1: {x:.2f}, PCA2: {y:.2f}, Cluster: {labels[i]}")
-    
-    # Plot PCA result
-    plt.scatter(pca_result[:, 0], pca_result[:, 1], c=labels)
-    plt.title("PCA of Motifs with K-means Clustering")
-    plt.xlabel("PCA1")
-    plt.ylabel("PCA2")
-    plt.show()
+
+    # Compare with JASPAR and collect matches
+    jaspar_matches = compare_with_jaspar(meme_output_dir)
+
+    # Save results to HTML
+    output_html = "results.html"
+    save_results_to_html(pca_result, labels, motifs, jaspar_matches, output_html)
+
+    # Serve the HTML file on port 8000
+    print(f"Serving results on http://localhost:8000/{output_html}")
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", 8000), handler) as httpd:
+        httpd.serve_forever()
 
 # Function to calculate background model
 def calculate_background_model(input_file, background_model_file):
@@ -167,7 +217,7 @@ def normalize_motif(motif, background_frequencies):
             normalized_motif.append('A')  # Default to 'A' for unknown bases
     return ''.join(normalized_motif)
 
-# Function to compare results with JASPAR using sequence alignment
+# Modify compare_with_jaspar to return matches
 def compare_with_jaspar(meme_output_dir):
     motif_file = os.path.join(meme_output_dir, "meme.txt")
     meme_motifs = []
@@ -178,24 +228,23 @@ def compare_with_jaspar(meme_output_dir):
     
     jaspar_motifs = fetch_jaspar_motifs()
     jaspar_background_frequencies = {'A': 0.25, 'C': 0.25, 'G': 0.25, 'T': 0.25}
-    print(f"JASPAR motifs: {list(jaspar_motifs.values())}")
-    found_match = False
+    jaspar_matches = []
     for meme_motif in meme_motifs:
         standard_motif = convert_iupac_to_standard(meme_motif)
         normalized_motif = normalize_motif(standard_motif, jaspar_background_frequencies)
-        print(f"Comparing motif: {normalized_motif}")
+        best_match = None
+        best_score = 0
         for jaspar_motif in jaspar_motifs.values():
             alignments = pairwise2.align.globalxx(normalized_motif, jaspar_motif)
             best_alignment = alignments[0]
             score = best_alignment[2]
             normalized_score = score / max(len(normalized_motif), len(jaspar_motif))
-            if normalized_score > 0.7:  # Threshold for similarity
-                print(f"Match found: {normalized_motif} in JASPAR with alignment score {score} (normalized score: {normalized_score:.2f})")
-                print(format_alignment(*best_alignment))
-                found_match = True
-                break
-    if not found_match:
-        print("No matches found between MEME motifs and JASPAR motifs.")
+            if normalized_score > best_score:
+                best_score = normalized_score
+                best_match = jaspar_motif
+        if best_match and best_score > 0.7:  # Threshold for similarity
+            jaspar_matches.append((meme_motif, best_match, best_score))
+    return jaspar_matches
 
 # Main function
 def main():

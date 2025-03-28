@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Motif Clustering Results</title>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Motif Clustering Results</h1>
+    </header>
+    <main class="container">
+      <section class="scatter-plot">
+        <h2>Scatter Plot</h2>
+        <img src="data:image/png;base64,{{scatter_plot}}" alt="Scatter Plot" />
+      </section>
+      <section class="info-table">
+        <h2>Motifs and Clusters</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Motif</th>
+              <th>Cluster</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{table_rows}}
+          </tbody>
+        </table>
+      </section>
+    </main>
+    <section class="jaspar-matches">
+      <h2>JASPAR Matches</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Motif</th>
+            <th>JASPAR Match</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{jaspar_rows}}
+        </tbody>
+      </table>
+    </section>
+  </body>
+</html>
