@@ -17,25 +17,25 @@ import socketserver
 import base64
 from io import BytesIO
 
-# Function to preprocess input
+# Function to read input file and preprocess sequences
 def preprocess_input(input_file):
     sequences = []
     for record in SeqIO.parse(input_file, "fasta"):
         sequences.append(str(record.seq))
     return sequences
 
-# Function to calculate background model
+# Function to calculate background model based on nucleotide frequencies
 def calculate_background_model(input_file, background_model_file):
     nucleotide_counts = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
     total_count = 0
 
     for record in SeqIO.parse(input_file, "fasta"):
-        for nucleotide in str(record.seq).upper():  # Convert to uppercase
+        for nucleotide in str(record.seq).upper():  
             if nucleotide in nucleotide_counts:
                 nucleotide_counts[nucleotide] += 1
                 total_count += 1
 
-    if total_count == 0:  # Handle empty or invalid input
+    if total_count == 0:
         raise ValueError("Input file contains no valid nucleotide sequences.")
 
     with open(background_model_file, 'w') as f:
@@ -62,7 +62,7 @@ def run_meme(input_file, output_dir, motif_length, background_model):
     ]
     subprocess.run(meme_command)
 
-# Helper function to reshape data
+# Helper function to reshape data for PCA and clustering 
 def reshape_data(data):
     if len(data) == 0:
         return np.array(data).reshape(0, 1)
@@ -71,30 +71,28 @@ def reshape_data(data):
     else:
         return np.array(data).reshape(-1, 1)
 
-# Modify postprocess_output to save results to HTML and serve it
+# Function to perform PCA and clustering on MEME output
+# Also compares the motifs with JASPAR database and saves the results to an HTML file
 def postprocess_output(meme_output_dir, k_range):
     motif_file = os.path.join(meme_output_dir, "meme.txt")
     motifs = []
     motif_pattern = re.compile(r"^MOTIF\s+(\S+)\s+MEME-\d+")
 
+    # Read motifs from MEME.txt file
     with open(motif_file) as f:
         for line in f:
             match = motif_pattern.match(line)
             if match:
-                # Extract the motif sequence from the line
                 motif_sequence = match.group(1)
-                motifs.append(motif_sequence)
-    
-    print(f"Motifs found: {motifs}")  # Debugging line
+                motifs.append(motif_sequence) 
     
     if len(motifs) < 2:
         raise ValueError("PCA requires at least two samples.")
     
     # Pad motifs to the same length
     max_length = max(len(motif) for motif in motifs)
-    padded_motifs = [motif.ljust(max_length, '-') for motif in motifs]  # Use '-' for padding
+    padded_motifs = [motif.ljust(max_length, '-') for motif in motifs]
     
-    # Convert motifs to numerical representation
     motif_matrix = np.array([[ord(char) for char in motif] for motif in padded_motifs])
     
     if motif_matrix.shape[0] < 2:

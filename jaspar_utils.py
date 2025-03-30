@@ -4,6 +4,7 @@ import requests
 import numpy as np
 from Bio import pairwise2
 
+# Function to fetch JASPAR motifs from the JASPAR database in MEME format
 def fetch_jaspar_motifs():
     url = "https://jaspar.genereg.net/api/v1/matrix/?format=meme"
     response = requests.get(url)
@@ -19,6 +20,7 @@ def fetch_jaspar_motifs():
         jaspar_motifs[motif_id] = sequence
     return jaspar_motifs
 
+# Function to convert IUPAC codes to standard nucleotide representation
 def convert_iupac_to_standard(sequence):
     iupac_to_standard = {
         'A': 'A', 'C': 'C', 'G': 'G', 'T': 'T',
@@ -28,6 +30,7 @@ def convert_iupac_to_standard(sequence):
     }
     return ''.join([iupac_to_standard.get(base, base) for base in sequence])
 
+# Function to normalize motifs based on background frequencies
 def normalize_motif(motif, background_frequencies):
     normalized_motif = []
     for base in motif:
@@ -37,6 +40,7 @@ def normalize_motif(motif, background_frequencies):
             normalized_motif.append('A') 
     return ''.join(normalized_motif)
 
+# Function to compare MEME motifs with JASPAR motifs
 def compare_with_jaspar(meme_output_dir):
     motif_file = os.path.join(meme_output_dir, "meme.txt")
     meme_motifs = []

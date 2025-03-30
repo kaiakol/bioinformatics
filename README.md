@@ -37,8 +37,3 @@
      ```
      http://localhost:8000/results.html
      ```
-
-## Notes
-
-- The script will automatically calculate background frequencies and fetch motifs from the JASPAR database.
-- Adjust parameters like motif length and clustering range in the `main()` function of `main.py` if needed.
