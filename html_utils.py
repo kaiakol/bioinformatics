@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 # Function to save clustering and JASPAR results to HTML file
-def save_results_to_html(pca_result, labels, motifs, jaspar_matches, output_html):
+def save_results_to_html(pca_result, labels, motifs, jaspar_matches, e_values, output_html):
     plt.figure()
     scatter = plt.scatter(pca_result[:, 0], pca_result[:, 1], c=labels, cmap="viridis")
     plt.title("PCA of Motifs with K-means Clustering")
@@ -23,9 +23,12 @@ def save_results_to_html(pca_result, labels, motifs, jaspar_matches, output_html
     with open(template_path, "r") as template_file:
         html_template = template_file.read()
 
-    sorted_motifs_clusters = sorted(zip(motifs, labels), key=lambda x: x[1])
-
-    table_rows = "".join(f"<tr><td>{motif}</td><td>{label}</td></tr>" for motif, label in sorted_motifs_clusters)
+    # Prepare table rows with motif, cluster, and e-value
+    sorted_motifs_clusters = sorted(zip(motifs, labels, e_values), key=lambda x: x[1])
+    table_rows = "".join(
+        f"<tr><td>{motif}</td><td>{label}</td><td>{e_value:.2e}</td></tr>"
+        for motif, label, e_value in sorted_motifs_clusters
+    )
 
     jaspar_rows = "".join(
         f"<tr><td>{motif}</td><td>{match}</td><td>{score:.2f}</td></tr>"

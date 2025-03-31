@@ -120,9 +120,18 @@ def postprocess_output(meme_output_dir, k_range):
     # Compare with JASPAR and collect matches
     jaspar_matches = compare_with_jaspar(meme_output_dir)
 
+    # Extract e-values for motifs
+    e_value_pattern = re.compile(r"E-value\s*=\s*([\d\.eE+-]+)")
+    e_values = []
+    with open(motif_file) as f:
+        for line in f:
+            match = e_value_pattern.search(line)
+            if match:
+                e_values.append(float(match.group(1)))
+
     # Save results to HTML
-    output_html = "results.html"
-    save_results_to_html(pca_result, labels, motifs, jaspar_matches, output_html)
+    output_html = os.path.join("html", "results.html")  # Use os.path.join for a valid file path
+    save_results_to_html(pca_result, labels, motifs, jaspar_matches, e_values, output_html)
 
     # Serve the HTML file on port 8000
     print(f"Serving results on http://localhost:8000/{output_html}")
