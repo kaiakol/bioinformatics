@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 # Function to save clustering and JASPAR results to HTML file
-def save_results_to_html(pca_result, labels, motifs, jaspar_matches, e_values, output_html):
+def save_results_to_html(pca_result, labels, motifs, e_values, tomtom_matches, output_html):
     plt.figure()
     scatter = plt.scatter(pca_result[:, 0], pca_result[:, 1], c=labels, cmap="viridis")
     plt.title("PCA of Motifs with K-means Clustering")
-    plt.xlabel("X")
-    plt.ylabel("Y")
+    plt.xlabel("PCA1")
+    plt.ylabel("PCA2")
     legend1 = plt.legend(*scatter.legend_elements(), title="Clusters")
     plt.gca().add_artist(legend1)
     buffer = BytesIO()
@@ -30,15 +30,16 @@ def save_results_to_html(pca_result, labels, motifs, jaspar_matches, e_values, o
         for motif, label, e_value in sorted_motifs_clusters
     )
 
-    jaspar_rows = "".join(
-        f"<tr><td>{motif}</td><td>{match}</td><td>{score:.2f}</td></tr>"
-        for motif, match, score in jaspar_matches
+    # Prepare table rows with TOMTOM matches
+    tomtom_rows = "".join(
+        f"<tr><td>{meme_motif}</td><td>{jaspar_motif}</td><td>{evalue:.2e}</td></tr>"
+        for meme_motif, jaspar_motif, evalue in tomtom_matches
     )
 
     html_content = (
         html_template.replace("{{scatter_plot}}", image_base64)
         .replace("{{table_rows}}", table_rows)
-        .replace("{{jaspar_rows}}", jaspar_rows)
+        .replace("{{tomtom_rows}}", tomtom_rows)
     )
 
     with open(output_html, "w") as output_file:
