@@ -20,18 +20,14 @@
 
 ## Running the Project
 
-1. **Prepare Input Files**:
-
-   - Make sure an input FASTA file (e.g., `crp0.fna`) is in the project directory.
-
-2. **Run the Script**:
+1. **Run the Script**:
 
    - Execute the Python script:
      ```bash
      python main.py
      ```
 
-3. **View Results**:
+2. **View Results**:
    - The results will be saved in an HTML file (`results.html`) and served locally on port 8000.
    - Open the browser and navigate to:
      ```
