@@ -42,7 +42,7 @@ def save_results_to_html(pca_result, labels, motifs, e_values, tomtom_matches, o
         .replace("{{table_rows}}", table_rows)
     )
     html_content += "<h2>Cluster Match Counts</h2>\n"
-    html_content += "<table border='1'>\n<tr><th>Cluster</th><th>JASPAR Match Count</th><th>Motif Count</th><th>Match-to-Motif Ratio</th></tr>\n"
+    html_content += "<table border='1'>\n<tr><th>Cluster</th><th>Motif Count</th><th>JASPAR Match Count</th><th>Match-to-Motif Ratio</th></tr>\n"
     for cluster, match_count in cluster_match_counts.items():
         motif_count = cluster_motif_counts[cluster]
         ratio = match_count / motif_count if motif_count > 0 else 0
