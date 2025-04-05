@@ -168,9 +168,22 @@ def postprocess_output(meme_output_dir, k_range):
             if match:
                 e_values.append(float(match.group(1)))
 
-    # Save results to HTML
+    # Count JASPAR matches and motifs for each cluster
+    cluster_match_counts = {cluster: 0 for cluster in range(best_k)}
+    cluster_motif_counts = {cluster: 0 for cluster in range(best_k)}
+    for idx, label in enumerate(labels):
+        cluster_motif_counts[label] += 1
+    for meme_motif, jaspar_motif, _ in tomtom_matches:
+        for idx, motif in enumerate(motifs):
+            if meme_motif == motif:
+                cluster_match_counts[labels[idx]] += 1
+                break
+
+    # Save results to HTML with cluster match counts and motif counts
     output_html = os.path.join("html", "results.html")
-    save_results_to_html(pca_result, labels, motifs, e_values, tomtom_matches, output_html)
+    save_results_to_html(
+        pca_result, labels, motifs, e_values, tomtom_matches, output_html, cluster_match_counts, cluster_motif_counts
+    )
 
     # Serve the HTML file on port 8000
     print(f"Serving results on http://localhost:8000/{output_html}")

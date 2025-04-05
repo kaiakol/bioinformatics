@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 
 # Function to save clustering and JASPAR results to HTML file
-def save_results_to_html(pca_result, labels, motifs, e_values, tomtom_matches, output_html):
+def save_results_to_html(pca_result, labels, motifs, e_values, tomtom_matches, output_html, cluster_match_counts, cluster_motif_counts):
     plt.figure()
     scatter = plt.scatter(pca_result[:, 0], pca_result[:, 1], c=labels, cmap="viridis")
     plt.title("PCA of Motifs with K-means Clustering")
@@ -36,11 +36,24 @@ def save_results_to_html(pca_result, labels, motifs, e_values, tomtom_matches, o
         for meme_motif, jaspar_motif, evalue in tomtom_matches
     )
 
+    # Add cluster match counts table with match-to-motif ratio
     html_content = (
         html_template.replace("{{scatter_plot}}", image_base64)
         .replace("{{table_rows}}", table_rows)
-        .replace("{{tomtom_rows}}", tomtom_rows)
     )
+    html_content += "<h2>Cluster Match Counts</h2>\n"
+    html_content += "<table border='1'>\n<tr><th>Cluster</th><th>JASPAR Match Count</th><th>Motif Count</th><th>Match-to-Motif Ratio</th></tr>\n"
+    for cluster, match_count in cluster_match_counts.items():
+        motif_count = cluster_motif_counts[cluster]
+        ratio = match_count / motif_count if motif_count > 0 else 0
+        html_content += f"<tr><td>{cluster}</td><td>{motif_count}</td><td>{match_count}</td><td>{ratio:.2f}</td></tr>\n"
+    html_content += "</table>\n"
+
+    # Add TOMTOM matches table
+    html_content += "<h2>TOMTOM Matches</h2>\n"
+    html_content += "<table border='1'>\n<tr><th>MEME Motif</th><th>JASPAR Motif</th><th>E-value</th></tr>\n"
+    html_content += tomtom_rows
+    html_content += "</table>\n"
 
     with open(output_html, "w") as output_file:
         output_file.write(html_content)
